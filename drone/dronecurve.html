@@ -570,6 +570,71 @@ if(!showplane)
     }
  }  
 }
+if(sline){
+    if(!firstlline3){
+    firstlline3=true;
+    body.position.set(-2*Pi,5,0);
+  }
+  if(showplane)
+  showplane3.visible=true;
+if(!showplane)
+   showplane3.visible=false;
+  CreateSline(angley3);
+  scene.add(showplane3,fatline2);
+  scene.remove(fatline1,showplane2,showplane1);
+  fatline2.rotation.z=angley3;
+  showplane3.rotation.z=angley3;
+  box.position.copy(SlineCurve.getPointAt(Time3 % 1));
+  box.position.y+=0.05
+    //console.log(Time1);
+  targetPos=SlineCurve.getPointAt(Time3 % 1);
+  orientationcurve=targetPos.clone().sub(body.position).normalize();
+ // orientationcurve=curveCcw.getTangent(Time1 % 1);
+  yref=targetPos.y;
+  rYaw = 0;
+  turning = false;  
+  var localY, localZ;
+  localY = body.vectorToWorldFrame (new CANNON.Vec3(0,1,0) );
+  localZ = body.vectorToWorldFrame (new CANNON.Vec3(0,0,1) );
+  var yL = new THREE.Vector3 (localY.x, localY.y, localY.z);
+  var x =new THREE.Vector3(orientationcurve.clone().normalize().x,orientationcurve.clone().normalize().y,orientationcurve.clone().normalize().z);
+  var zL = new THREE.Vector3 (localZ.x, localZ.y, localZ.z);
+  var zW = new THREE.Vector3 (0,0,1);
+  var v = zW.projectOnPlane (yL);
+  var yawAngle =  rotateAlongAxisTo (x, yL, zL);
+  if(yawAngle-0.2>0) {
+  rYaw = -omegaHover*0.1;
+  turning = true;
+  }
+  if(yawAngle+0.2<0){
+  rYaw = omegaHover*0.1;
+  turning = true;
+  }
+  targetPosx=new THREE.Vector3(0,targetPos.y,targetPos.z);
+  orientationx=targetPosx.clone().sub(body.position).normalize();
+  var z=zW.projectOnPlane(orientationx);
+  pitchRef =0;
+  pitching=false;  
+  if(z.z>0){
+  pitchRef = 0.025;
+  pitching=true;
+  }
+  if(z.z<0){
+  pitchRef = -0.025;
+  pitching=true;
+  }
+  if(targetPos.x-body.position.x<=0.5&&targetPos.x-body.position.x>=-0.5){ 
+      if(targetPos.z-body.position.z<=0.5&&targetPos.z-body.position.z>=-0.5){
+      Time3 += 0.003;
+      turning=false;
+      pitchRef = 0;
+      pitching = false; 
+      rollRef = 0;
+      rolling = false;
+      ready=true;
+    }
+ }  
+}
 
 if(sloop){
   if(!firstlline2){
@@ -638,71 +703,6 @@ if(!showplane)
  }  
 }
   
-if(sline){
-    if(!firstlline3){
-    firstlline3=true;
-    body.position.set(-2*Pi,5,0);
-  }
-  if(showplane)
-  showplane3.visible=true;
-if(!showplane)
-   showplane3.visible=false;
-  CreateSline(angley3);
-  scene.add(showplane3,fatline2);
-  scene.remove(fatline1,showplane2,showplane1);
-  fatline2.rotation.z=angley3;
-  showplane3.rotation.z=angley3;
-  box.position.copy(SlineCurve.getPointAt(Time3 % 1));
-  box.position.y+=0.05
-    //console.log(Time1);
-  targetPos=SlineCurve.getPointAt(Time3 % 1);
-  orientationcurve=targetPos.clone().sub(body.position).normalize();
- // orientationcurve=curveCcw.getTangent(Time1 % 1);
-  yref=targetPos.y;
-  rYaw = 0;
-  turning = false;  
-  var localY, localZ;
-  localY = body.vectorToWorldFrame (new CANNON.Vec3(0,1,0) );
-  localZ = body.vectorToWorldFrame (new CANNON.Vec3(0,0,1) );
-  var yL = new THREE.Vector3 (localY.x, localY.y, localY.z);
-  var x =new THREE.Vector3(orientationcurve.clone().normalize().x,orientationcurve.clone().normalize().y,orientationcurve.clone().normalize().z);
-  var zL = new THREE.Vector3 (localZ.x, localZ.y, localZ.z);
-  var zW = new THREE.Vector3 (0,0,1);
-  var v = zW.projectOnPlane (yL);
-  var yawAngle =  rotateAlongAxisTo (x, yL, zL);
-  if(yawAngle-0.2>0) {
-  rYaw = -omegaHover*0.1;
-  turning = true;
-  }
-  if(yawAngle+0.2<0){
-  rYaw = omegaHover*0.1;
-  turning = true;
-  }
-  targetPosx=new THREE.Vector3(0,targetPos.y,targetPos.z);
-  orientationx=targetPosx.clone().sub(body.position).normalize();
-  var z=zW.projectOnPlane(orientationx);
-  pitchRef =0;
-  pitching=false;  
-  if(z.z>0){
-  pitchRef = 0.025;
-  pitching=true;
-  }
-  if(z.z<0){
-  pitchRef = -0.025;
-  pitching=true;
-  }
-  if(targetPos.x-body.position.x<=0.5&&targetPos.x-body.position.x>=-0.5){ 
-      if(targetPos.z-body.position.z<=0.5&&targetPos.z-body.position.z>=-0.5){
-      Time3 += 0.003;
-      turning=false;
-      pitchRef = 0;
-      pitching = false; 
-      rollRef = 0;
-      rolling = false;
-      ready=true;
-    }
- }  
-}
 
 
 
