@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>quadcopter</title>
+    <meta charset="utf-8">
+    <style>
+    #info{
+     position:absolute;
+     top:2%;
+     width:100%;
+     color:yellow;
+     text-align:center;
+     }
+    #text{
+     position:absolute;
+     bottom:2%;
+     width:100%;
+     color: #ffff00;
+     text-align:center;
+     }
+	#yreftext {
+	  width:2%
+	}
+      body {
+        overflow:hidden;
+      }
+    </style>
+
+</head>
+<body>
+<div id="info">
+ <p>Up/Down to Change Hover Altitude;
+ Left/Right to Yaw; A/D to Roll; W/S to Pitch
+</p>
+
+ <button id="thrustUp">T-Up</button>
+ <button id="thrustDo">T-Down</button>
+ <button id="cwTurn">y-Left</button>
+ <button id="ccwTurn">y-Right</button>
+ <button id="rollRight">r-PORT</button>
+ <button id="rollLeft">r-STARBOARD</button>
+ <button id="pitchFore">p-FORE</button>
+ <button id="pitchAft">p-AFT</button>
+ <br>
+ <input id="yreftext" type="text" value=2><br>
+      <!--<input id="yawtext" type="text" value=0>
+     <input type=range min=-1 max=1 step="0.05" value = 0 id='yawref'><br>
+      <button id="flyup">Take-off</button>-->
+       <button id="auto1">Auto-Mode1</button>
+        <button id="auto2">Auto-Mode2</button><br>
+         <button id="counterclockwise">Counterclockwise</button>
+          <button id="clockwise">Clockwise</button>
+         <button id="s-line">S-line</button>
+</div>
+<div id="text"></div>
+
+<script src="https://threejs.org/build/three.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/misc/Gyroscope.js"></script>
+<script src="../build/cannon.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="qcommon.js"></script>
+<script src="qangles.js"></script>
+<script src="qservo.js"></script>
+<script>
+
+class PIDControllerR2 {
+  constructor(x = 0, y = 0, xref = 0, yref = 0) {
+    this.x = x;
+    this.y = y;
+    this.xref = xref;
+    this.yref = yref;
+    this.vx = 0;
+    this.vy = 0;
+    this.KP = 150; // 'spring constant'
+    this.KD = 20; // 'damping'
+    this.KI = 20;
+	  this.integralX = 0;
+    this.integralY = 0;
+  }
+
+  update(dt) {
+    let errorX = this.xref - this.x;
+    let errorY = this.yref - this.y;
+		this.integralX += errorX*dt;
+		this.integralY += errorY*dt;
+		let fx = this.KP * errorX + this.KI*this.integralX - this.KD * this.vx;
+    let fy = this.KP * errorY + this.KI*this.integralY - this.KD * this.vy;
+    // plant: Euler's method (Newtonian dynamics)
+    this.vx += fx * dt;
+    this.x += this.vx * dt
+    this.vy += fy * dt;
+    this.y += this.vy * dt
+    return [this.x, this.y]
+  }
+  setRef(xref, yref) {
+    this.xref = xref;
+    this.yref = yref;
+  }
+}
+
+/*  $('#flyup').click(function() {
+       controller=!controller;
+    });*/
+  $('#auto1').click(function() {
+       autocontroller1=!autocontroller1;
+    });
+    $('#auto2').click(function() {
+       autocontroller2=!autocontroller2;
+    });
+        $('#counterclockwise').click(function() {
+       ccw=!ccw;
+    });
+        $('#clockwise').click(function() {
+       cw=!cw;
+    });
+          $('#s-line').click(function() {
+       sline=!sline;
+    });
+  
+  
+var world, body; 
+var camera, scene, renderer, clock, keyboard, airplane,circle;
+var omega, omega0, omega1, omega2, omega3;
+const SIZE = 1;
+var omegaGain = 1.0;
+var omegaHover;
+const PROP_KK = 0.1;
+var controller=false;
+// flight maneuver
+// hovering
+var yref = 5;   
+var turning = true;
+var rolling = true;
+var pitching=true;
+var rYaw = 0;
+var rRoll = 0;
+var rPitch = 0;
+var yawAngle = 0, yawRef = 0;
+var rollAngle = 0, rollRef = 0;
+var pitchAngle = 0, pitchRef = 0;
+var gyro;
+var autocontroller1=false,autocontroller2=false,ccw=false,cw=false,sline=false;
+var select=2;
+var targetPos;
+var clock = new THREE.Clock(),curve1,curveObject1,curveObject2,curve2,curve3,curveObject3;
+init();
+animate();
+
+   /* $('#yawref').change ( function() {
+        yawref = $(this).val();
+        $('#yawtext').val (yawref);
+    });
+*/
+function init() {
+	keyboard = new KeyboardState();
+    initThree();
+    initCannon();
+    //pidR2 = new PIDControllerR2();
+	/////////////////////////////
+	// omegaHover: stable hover speed
+	omegaHover = Math.sqrt ( body.mass * world.gravity.length()/4/PROP_KK );
+	
+	gyro = new THREE.Gyroscope();
+  	scene.add (gyro)
+  	gyro.add (camera)
+  	airplane.add (gyro)
+    targetPos= new THREE.Vector3(5,5,-5);
+	curve1 = new THREE.CatmullRomCurve3( [
+	new THREE.Vector3( 0, 5, 0 ),
+	new THREE.Vector3( -3*Math.sqrt(2)+6, 5, 3*Math.sqrt(2) ),
+	new THREE.Vector3( 6, 5, 6 ),
+	new THREE.Vector3( 3*Math.sqrt(2)+6, 5, 3*Math.sqrt(2) ),
+	new THREE.Vector3( 12, 5, 0 ),
+	new THREE.Vector3( 3*Math.sqrt(2)+6, 5, -3*Math.sqrt(2) ),
+	new THREE.Vector3( 6, 5, -6 ),
+	new THREE.Vector3( -3*Math.sqrt(2)+6, 5, -3*Math.sqrt(2) ),
+	new THREE.Vector3( 0, 5, 0 )
+
+	] );
+	var points = curve1.getPoints( 50 );
+	var geometry = new THREE.BufferGeometry().setFromPoints( points );
+	var material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+    curveObject1 = new THREE.Line( geometry, material );
+  ////////////////////////////////
+   curve2 = new THREE.CatmullRomCurve3( [
+	new THREE.Vector3(0, 5, 0 ),
+	new THREE.Vector3( 5, 5, 5 ),
+	new THREE.Vector3( 10, 5, 0 ),
+	new THREE.Vector3( 15, 5, 5 ),
+	new THREE.Vector3( 20, 5, 0 )
+	] );
+
+	var points2 = curve2.getPoints( 50 );
+	var geometry2 = new THREE.BufferGeometry().setFromPoints( points2 );
+	var material2 = new THREE.LineBasicMaterial( { color : 0xffff00 } );
+    curveObject2 = new THREE.Line( geometry2, material2 );
+    ///////////////////////////
+    curve3 = new THREE.CatmullRomCurve3( [
+	new THREE.Vector3( 0, 5, 0 ),
+	new THREE.Vector3( 3*Math.sqrt(2)-6, 5, 3*Math.sqrt(2) ),
+	new THREE.Vector3( -6, 5, 6 ),
+	new THREE.Vector3( -3*Math.sqrt(2)-6, 5, 3*Math.sqrt(2) ),
+	new THREE.Vector3( -12, 5, 0 ),
+	new THREE.Vector3( -3*Math.sqrt(2)-6, 5, -3*Math.sqrt(2) ),
+	new THREE.Vector3( -6, 5, -6 ),
+	new THREE.Vector3( 3*Math.sqrt(2)-6, 5, -3*Math.sqrt(2) ),
+	new THREE.Vector3( 0, 5, 0 )
+	] );
+
+	var points3 = curve3.getPoints( 50 );
+	var geometry3 = new THREE.BufferGeometry().setFromPoints( points3 );
+	var material3 = new THREE.LineBasicMaterial( { color : 0xffff00 } );
+    curveObject3 = new THREE.Line( geometry3, material3 );
+
+}
+
+var maxVelocity=0.4;
+var orientationcurve=new THREE.Vector3();
+var orientationfull=new THREE.Vector3();
+var orientation=new THREE.Vector3();
+var Time1=0,Time2=0,Time3=0;
+
+function animate() {
+	let dt = clock.getDelta();
+    console.log(dt);
+	orientation=targetPos.clone().sub(body.position);
+ 
+   //  console.log(orientaionLocal);
+     if(autocontroller1){ 
+     	autocontroller2=false;
+     	autocontroller3=false;
+     rYaw = 0;
+    turning = false;	
+  targetPos=new THREE.Vector3(8,5,-10);
+     rollRef = 0;
+	 rolling = false;	
+	 if(orientation.x-maxVelocity>0){
+	    rollRef = -0.05;
+	   }
+	if(orientation.x+maxVelocity<0){
+	  rollRef = 0.05;
+	}
+		pitchRef =0;
+	    pitching=false;	
+	 if(orientation.z-maxVelocity>0){
+	    pitchRef = 0.05;
+        pitching=true;
+	   }
+	if(orientation.z+maxVelocity<0){
+	    pitchRef = -0.05;
+        pitching=true;
+	}
+}
+
+if(autocontroller2){
+    autocontroller1=false;
+    autocontroller3=false;
+    targetPos=new THREE.Vector3(5,5,-5);
+    rYaw = 0;
+    turning = false;	
+    var localY, localZ;
+    localY = body.vectorToWorldFrame (new CANNON.Vec3(0,1,0) );
+	localZ = body.vectorToWorldFrame (new CANNON.Vec3(0,0,1) );
+	var yL = new THREE.Vector3 (localY.x, localY.y, localY.z);
+	var x =new THREE.Vector3(orientation.clone().normalize().x,orientation.clone().normalize().y,orientation.clone().normalize().z);
+	var zL = new THREE.Vector3 (localZ.x, localZ.y, localZ.z);
+	var zW = new THREE.Vector3 (0,0,1);
+	var v = zW.projectOnPlane (yL);
+	var yawAngle =  rotateAlongAxisTo (x, yL, zL);
+
+
+     if(yawAngle-0.2>0) {
+	    rYaw = -omegaHover*0.1;
+        turning = true;
+	   }
+	if(yawAngle+0.2<0){
+	    rYaw = omegaHover*0.1;
+        turning = true;
+	 }
+     targetPosx=new THREE.Vector3(0,targetPos.y,targetPos.z);
+     orientationx=targetPosx.clone().sub(body.position).normalize();
+     var z=zW.projectOnPlane(orientationx);
+     pitchRef =0;
+     pitching=false;	
+	 if(z.z>0){
+		 pitchRef = 0.05;
+	     pitching=true;
+	   }
+	if(z.z<0){
+		 pitchRef = -0.05;
+	     pitching=true;
+	}
+
+}
+
+if(ccw){
+   scene.add(curveObject1);
+   scene.remove(curveObject2,curveObject3);
+   autocontroller2=false;
+   autocontroller1=false;
+    Time1 += 0.0005;
+   targetPos=curve1.getPointAt(Time1 % 1);
+   orientationcurve=curve1.getTangent(Time1 % 1);
+    rYaw = 0;
+    turning = false;	
+    var localY, localZ;
+    localY = body.vectorToWorldFrame (new CANNON.Vec3(0,1,0) );
+	localZ = body.vectorToWorldFrame (new CANNON.Vec3(0,0,1) );
+	var yL = new THREE.Vector3 (localY.x, localY.y, localY.z);
+	var x =new THREE.Vector3(orientationcurve.clone().normalize().x,orientationcurve.clone().normalize().y,orientationcurve.clone().normalize().z);
+	var zL = new THREE.Vector3 (localZ.x, localZ.y, localZ.z);
+	var zW = new THREE.Vector3 (0,0,1);
+	var v = zW.projectOnPlane (yL);
+	var yawAngle =  rotateAlongAxisTo (x, yL, zL);
+
+
+     if(yawAngle-0.2>0) {
+	    rYaw = -omegaHover*0.1;
+        turning = true;
+	   }
+	if(yawAngle+0.2<0){
+	    rYaw = omegaHover*0.1;
+        turning = true;
+	 }
+     targetPosx=new THREE.Vector3(0,targetPos.y,targetPos.z);
+     orientationx=targetPosx.clone().sub(body.position).normalize();
+     var z=zW.projectOnPlane(orientationx);
+     pitchRef =0;
+     pitching=false;	
+	 if(z.z>0){
+		 pitchRef = 0.05;
+	     pitching=true;
+	   }
+	if(z.z<0){
+		 pitchRef = -0.05;
+	     pitching=true;
+	}
+}
+if(cw){
+	scene.add(curveObject3);
+	scene.remove(curveObject2,curveObject1);
+   autocontroller2=false;
+   autocontroller1=false;
+    Time3 += 0.0005;
+   targetPos=curve3.getPointAt(Time3 % 1);
+   orientationcurve=curve3.getTangent(Time3 % 1);
+    rYaw = 0;
+    turning = false;	
+    var localY, localZ;
+    localY = body.vectorToWorldFrame (new CANNON.Vec3(0,1,0) );
+	localZ = body.vectorToWorldFrame (new CANNON.Vec3(0,0,1) );
+	var yL = new THREE.Vector3 (localY.x, localY.y, localY.z);
+	var x =new THREE.Vector3(orientationcurve.clone().normalize().x,orientationcurve.clone().normalize().y,orientationcurve.clone().normalize().z);
+	var zL = new THREE.Vector3 (localZ.x, localZ.y, localZ.z);
+	var zW = new THREE.Vector3 (0,0,1);
+	var v = zW.projectOnPlane (yL);
+	var yawAngle =  rotateAlongAxisTo (x, yL, zL);
+
+
+     if(yawAngle-0.2>0) {
+	    rYaw = -omegaHover*0.1;
+        turning = true;
+	   }
+	if(yawAngle+0.2<0){
+	    rYaw = omegaHover*0.1;
+        turning = true;
+	 }
+     targetPosx=new THREE.Vector3(0,targetPos.y,targetPos.z);
+     orientationx=targetPosx.clone().sub(body.position).normalize();
+     var z=zW.projectOnPlane(orientationx);
+     pitchRef =0;
+     pitching=false;	
+	 if(z.z>0){
+		 pitchRef = 0.05;
+	     pitching=true;
+	   }
+	if(z.z<0){
+		 pitchRef = -0.05;
+	     pitching=true;
+	}
+}
+if(sline){
+ scene.add(curveObject2);
+ scene.remove(curveObject3,curveObject1);
+ scene
+   autocontroller2=false;
+   autocontroller1=false;
+    Time2 += 0.0006;
+   targetPos=curve2.getPointAt(Time2 % 1);
+   orientationcurve=curve2.getTangent(Time2 % 1);
+    rYaw = 0;
+    turning = false;	
+    var localY, localZ;
+    localY = body.vectorToWorldFrame (new CANNON.Vec3(0,1,0) );
+	localZ = body.vectorToWorldFrame (new CANNON.Vec3(0,0,1) );
+	var yL = new THREE.Vector3 (localY.x, localY.y, localY.z);
+	var x =new THREE.Vector3(orientationcurve.clone().normalize().x,orientationcurve.clone().normalize().y,orientationcurve.clone().normalize().z);
+	var zL = new THREE.Vector3 (localZ.x, localZ.y, localZ.z);
+	var zW = new THREE.Vector3 (0,0,1);
+	var v = zW.projectOnPlane (yL);
+	var yawAngle =  rotateAlongAxisTo (x, yL, zL);
+
+
+     if(yawAngle-0.2>0) {
+	    rYaw = -omegaHover*0.1;
+        turning = true;
+	   }
+	if(yawAngle+0.2<0){
+	    rYaw = omegaHover*0.1;
+        turning = true;
+	 }
+     targetPosx=new THREE.Vector3(0,targetPos.y,targetPos.z);
+     orientationx=targetPosx.clone().sub(body.position).normalize();
+     var z=zW.projectOnPlane(orientationx);
+     pitchRef =0;
+     pitching=false;	
+	 if(z.z>0){
+		 pitchRef = 0.05;
+	     pitching=true;
+	   }
+	if(z.z<0){
+		 pitchRef = -0.05;
+	     pitching=true;
+	}
+}
+    //console.log(orientaion);
+ 
+
+	/*if(controller&&yref==0)
+	{
+		yref=2;
+        var turning = false;
+		var rolling = false;
+		var pitching= false;
+	}
+	if(controller)
+	{
+        var turning = false;
+		var rolling = false;
+		var pitching= false;
+	}
+	if(!controller&&yref>0.5)
+	{
+		yref=0.5;
+	}
+	if(!controller&&yref==0.5)
+	{
+		//omega0=omega1=omega2=omega3=0;
+		var turning = true;
+		var rolling = true;
+		var pitching= true;
+	}*/
+
+
+  // not in thrust+/- mode, activate hoverServo
+  if (omegaGain === 1.0) 
+	omega = hoverServo(body, dt);
+  else
+	omega = omegaGain*omegaHover;  // this looks much better
+
+  omega = Math.clamp (omega, 0, 50);
+ // console.log("ryaw: "+rYaw+" "+turning);
+  
+  if (! turning) {
+  	//console.log("turningryaw: "+rYaw);
+  	rYaw = yawServo (body, dt);
+  	//console.log("servoryaw: "+rYaw);
+  	rYaw = Math.clamp (rYaw, -omega, omega);
+  }  
+
+
+// always activate rollServo and pitchServo
+
+  rRoll = rollServo (body, dt);
+  rRoll = Math.clamp (rRoll, -omega*0.15, omega*0.15);
+
+
+  rPitch = pitchServo (body, dt);
+  rPitch = Math.clamp (rPitch, -omega*0.15, omega*0.15);
+
+  
+  omega0 = omega - rYaw - rRoll - rPitch;
+  omega1 = omega + rYaw - rRoll + rPitch;
+  omega2 = omega - rYaw + rRoll + rPitch;
+  omega3 = omega + rYaw + rRoll - rPitch;
+ 
+  /*omega0 = omega  - rRoll - rPitch;
+  omega1 = omega  - rRoll + rPitch;
+  omega2 = omega  + rRoll + rPitch;
+  omega3 = omega  + rRoll - rPitch;*/
+
+  /*omega0 = omega - rYaw;
+  omega1 = omega + rYaw;
+  omega2 = omega - rYaw;
+  omega3 = omega + rYaw;*/
+
+  body.torque = new CANNON.Vec3(0,0,0);
+  body.angularDamping = 0.39
+  body.linearDamping = 0.39
+
+  body.applyLocalForce (new CANNON.Vec3(0,PROP_KK*omega0*omega0,0), new CANNON.Vec3(-1.0*SIZE, 0, SIZE) )
+  body.applyLocalForce (new CANNON.Vec3(0,PROP_KK*omega1*omega1,0), new CANNON.Vec3(-1.0*SIZE, 0, -SIZE) )
+  body.applyLocalForce (new CANNON.Vec3(0,PROP_KK*omega2*omega2,0), new CANNON.Vec3( 1.0*SIZE, 0, -SIZE) )
+  body.applyLocalForce (new CANNON.Vec3(0,PROP_KK*omega3*omega3,0), new CANNON.Vec3( 1.0*SIZE, 0, SIZE) )	
+
+    
+	let KT = 0.1;
+	// need to add the last argument
+    body.torque.vadd (new CANNON.Vec3(0, -KT*omega0*omega0,0), body.torque);
+    body.torque.vadd (new CANNON.Vec3(0,  KT*omega1*omega1,0), body.torque);
+    body.torque.vadd (new CANNON.Vec3(0, -KT*omega2*omega2,0), body.torque);
+    body.torque.vadd (new CANNON.Vec3(0,  KT*omega3*omega3,0), body.torque);
+
+//bug ... for pitching, weird number from KT not zero
+//console.log (body.torque)		      
+//console.log("omega0:"+omega0.toFixed(2)+" omega1:"+omega1.toFixed(2)+" omega2:"+omega2.toFixed(2)+" omega3:"+omega3.toFixed(2));
+	requestAnimationFrame( animate );
+	renderer.render( scene, camera );
+	handleKeys();
+    updatePhysics();
+
+	// render propeller in airplane
+	/*airplane.children[0].children[0].rotation.y += omega0*dt;
+	airplane.children[1].children[0].rotation.y -= omega1*dt;
+	airplane.children[2].children[0].rotation.y += omega2*dt;
+	airplane.children[3].children[0].rotation.y -= omega3*dt;*/
+	airplane.children[25].rotation.z += omega0*dt;
+	airplane.children[26].rotation.z -= omega1*dt;
+	airplane.children[27].rotation.z += omega2*dt;
+	airplane.children[28].rotation.z -= omega3*dt;
+}
+
+function handleKeys () {
+	keyboard.update();
+	const RATIO = 1.0003;
+	/////////////////////////////////////////////////////////////
+	// for hovering
+	if (keyboard.pressed('up')) {
+		controller=true;
+		$('#thrustUp').css ("background-color",  'red');
+		omegaGain *= RATIO;
+	}
+	if (keyboard.up('up')) {
+		yref = body.position.y;
+		console.log ('set yref: ' + yref);
+		omegaGain = 1;
+		$('#thrustUp').css ("background-color",  'white');
+	}
+
+	if (keyboard.pressed('down')) {
+		$('#thrustDo').css ("background-color",  'yellow');
+		omegaGain /= RATIO;
+	}
+	if (keyboard.up('down')) {
+		yref = body.position.y;
+		console.log ('set yref: ' + yref);
+		$('#thrustDo').css ("background-color",  'white');
+		omegaGain = 1;
+	}
+
+	/////////////////////////////////////////////////////////////
+	// for rolling
+	if (keyboard.pressed('A')) {
+		$('#rollLeft').css ("background-color",  'yellow');
+        //rRoll = omegaHover*0.01;
+        //rolling = true;
+		rollRef = 0.1;
+	}
+	if (keyboard.up('A')) {
+		$('#rollLeft').css ("background-color",  'white');
+		//rRoll = 0;//-omegaHover*0.005;
+		rollRef = 0;
+		rolling = false;	
+	}
+
+	if (keyboard.pressed('D')) {
+		$('#rollRight').css ("background-color",  'yellow');
+        //rRoll = - omegaHover*0.01;
+        //rolling = true;
+        rollRef = -0.1;
+	}
+	if (keyboard.up('D')) {
+		$('#rollRight').css ("background-color",  'white');
+		rollRef = 0;
+		rolling = false;		
+	}
+
+	/////////////////////////////////////////////////////////////
+	// for pitching
+	if (keyboard.pressed('W')) {
+		$('#pitchFore').css ("background-color",  'yellow');
+        //rRoll = omegaHover*0.01;
+        //rolling = true;
+		pitchRef = 0.1;
+		pitching=true;
+	}
+	if (keyboard.up('W')) {
+		$('#pitchFore').css ("background-color",  'white');
+		//rRoll = 0;//-omegaHover*0.005;
+		pitchRef = 0;
+		pitching = false;	
+	}
+
+	if (keyboard.pressed('S')) {
+		$('#pitchAft').css ("background-color",  'yellow');
+        //rRoll = - omegaHover*0.01;
+        //rolling = true;
+        pitchRef = -0.1;
+        pitching=true;
+	}
+	if (keyboard.up('S')) {
+		$('#pitchAft').css ("background-color",  'white');
+		pitchRef = 0;
+		pitching = false;		
+	}
+
+	/////////////////////////////////////////////////////////////
+	// for yawing
+	if (keyboard.pressed('left')) {
+		$('#cwTurn').css ("background-color",  'yellow');
+        rYaw = omegaHover*0.1;
+        turning = true;
+	}
+	if (keyboard.up('left')) {
+		$('#cwTurn').css ("background-color",  'white');
+		rYaw = 0;
+		turning = false;
+		
+		// set up stopping reference
+		yawRef = getBodyYaw2(body);
+		if((yawRef/Math.PI*180).toFixed(2)==360)yawRef=0;
+	    console.log ('set thetaRef: ' + (yawRef/Math.PI*180).toFixed(2));
+	    //pidR2.setRef (Math.cos(yawRef), Math.sin(yawRef));						
+	}
+
+	if (keyboard.pressed('right')) {
+		$('#ccwTurn').css ("background-color",  'yellow');
+        rYaw = -omegaHover*0.1;
+        turning = true;
+	}
+	if (keyboard.up('right')) {
+		$('#ccwTurn').css ("background-color",  'white');
+		rYaw = 0;
+		turning = false;
+		// set up stopping reference
+		yawRef = getBodyYaw2(body);
+		if((yawRef/Math.PI*180).toFixed(2)==360)yawRef=0;
+         //if((yawRef/Math.PI*180).toFixed(2)>0&&(yawRef/Math.PI*180).toFixed(2)<1)yawRef=0;
+
+	    console.log ('set thetaRef: ' + (yawRef/Math.PI*180).toFixed(2));
+	    console.log(turning+omegaHover);
+	}
+
+    $('#gain').val (omegaGain);
+	$('#yreftext').val (yref.toFixed(2));
+}
+
+
+function updatePhysics() {
+  var timeStep=1/60;
+  world.step(timeStep);
+  // Copy coordinates from Cannon.js to Three.js
+  airplane.position.copy(body.position);
+  airplane.quaternion.copy(body.quaternion);
+    
+  yawAngle = getBodyYaw2(body);
+ if((yawAngle/Math.PI*180).toFixed(2)==360)yawAngle=0;
+  rollAngle = getBodyRoll2(body);
+  
+  pitchAngle = getBodyPitch2(body);
+ // console.log ('thetaRef: ' +(yawAngle/Math.PI*180).toFixed(2));
+  //console.log ('roll: ' + (rollAngle/Math.PI*180).toFixed(2));
+  
+	$('#text').html (`${omegaGain.toFixed(3)}:[ ${body.position.x.toFixed(3)}, ${body.position.y.toFixed(2)}, 
+	  ${body.position.z.toFixed(3)} ] <br>      
+	[${yawRef.toFixed(3)}] : [Y: ${yawAngle.toFixed(3)} ] [R: ${rollAngle.toFixed(3)} ] [P: ${pitchAngle.toFixed(3)} ]  
+	<br>
+     [omega0:${omega0.toFixed(3)}] : [omega1: ${omega1.toFixed(3)} ] [omega2: ${omega2.toFixed(3)} ] [omega3: ${omega3.toFixed(3)} ]         `);  
+}
+</script>
+</body>
+</html>
