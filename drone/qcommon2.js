@@ -826,7 +826,7 @@ function initThree() {
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
   camera.position.z =-8;
-  camera.position.y =10;
+  camera.position.y =14;
 
 
   var ambientLight = new THREE.AmbientLight(0xfffffff);
@@ -835,6 +835,8 @@ function initThree() {
   upcamera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
   upcamera.position.z =2;
   upcamera.position.y =5;
+
+
 
   light2 = new THREE.SpotLight(0xffffff, 0.5);
   light2.position.set(-10, 40, -10);

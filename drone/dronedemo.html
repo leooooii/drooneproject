@@ -59,8 +59,7 @@
    <button id="showStart1">Show1</button>
   <button id="showStart2">Show2</button>
     <button id="adddrone">Add</button><br>
-           <button id="showline1">ShowGuideline1</button>
-  <button id="showline2">ShowGuideline2</button>
+           <button id="showline1">ShowGuideline</button>
 </div>
 
 <div id="text"></div>
@@ -557,12 +556,7 @@ class drone3{
     $('#showline1').click(function() {
        showline1=!showline1;
     });
-    $('#showline2').click(function() {
-       showline2=!showline2;
-    });
-        $('#showline3').click(function() {
-       showline3=!showline3;
-    });
+
 var world, body,body2,body3; 
 var camera,upcamera,scene, renderer, clock, keyboard, airplane,circle,light2;
 var omega, omega0, omega1, omega2, omega3,omega0Temp,omega1Temp,omega2Temp,omega3Temp;
@@ -641,7 +635,6 @@ function init() {
   cameraHUD.position.z = 100; 
   gyro = new THREE.Gyroscope();
   scene.add (gyro,upcamera)
-  gyro.add (camera);
   airplane.add (gyro)
   pickables=[airplane.children[9],airplane.children[11],airplane.children[12],airplane.children[10]];
   targetPos= new THREE.Vector3(5,5,-5);
@@ -750,15 +743,19 @@ fatline1=new THREE.Object3D();
   ///////////////////
   R=2, r=6,rr=3;
   curve3 = new THREE.CatmullRomCurve3( [
-        new THREE.Vector3(0, 5 ,0-3),
-        new THREE.Vector3(0, R*0.5*Math.sqrt(2)+5 ,-0.5*R*Math.sqrt(2)+R-3),
-        new THREE.Vector3( 0,5+R,R-3),
-        new THREE.Vector3( 0,5+R*0.5*Math.sqrt(2),R+0.5*R*Math.sqrt(2)-3),
-        new THREE.Vector3( 0,5,2*R-3),
-        new THREE.Vector3( 0,5-R*0.5*Math.sqrt(2),R+0.5*R*Math.sqrt(2)-3),
-        new THREE.Vector3( 0,5-R,R-3),
-       new THREE.Vector3(0, -R*0.5*Math.sqrt(2)+5 ,-0.5*R*Math.sqrt(2)+R-3),
-
+        new THREE.Vector3(0, 0+5 ,0),
+        new THREE.Vector3(4, 0+5 ,0),
+        new THREE.Vector3(4, 5*Math.sin(Math.PI/12*4)+5 ,4),
+        new THREE.Vector3(4, 5*Math.sin(Math.PI/12*8)+5 ,8),
+        new THREE.Vector3(4, 5*Math.sin(Math.PI/12*12)+5 ,12),
+        new THREE.Vector3(4, 0+5 ,12),
+        new THREE.Vector3(4*0.5*Math.sqrt(2), -2+5 ,12),
+        new THREE.Vector3(0, -4+5,12),
+        new THREE.Vector3(-4*0.5*Math.sqrt(2), -2+5 ,12),
+        new THREE.Vector3(-4, 5*Math.sin(Math.PI/12*12)+5 ,12),
+        new THREE.Vector3(-4, 5*Math.sin(Math.PI/12*8)+5 ,8),
+        new THREE.Vector3(-4, 5*Math.sin(Math.PI/12*4)+5 ,4),
+        new THREE.Vector3(-4, +5 ,0),
        /* new THREE.Vector3(-R, 5 ,0),
         new THREE.Vector3(-0.5*R*Math.sqrt(2)+R-R, 5 ,R*0.5*Math.sqrt(2)),
         new THREE.Vector3( 0,  5,R),
@@ -774,7 +771,7 @@ fatline1=new THREE.Object3D();
   var geometry3 = new THREE.BufferGeometry().setFromPoints( points3 );
   var material3 = new THREE.LineBasicMaterial( { color : 0xffff00 } );
   curveObject3 = new THREE.Line( geometry3, material3 );
-
+ //scene.add(curveObject3)
     curve1 = new THREE.CatmullRomCurve3( [
         new THREE.Vector3(3, 6 ,-3),
         new THREE.Vector3(3, rr*0.5*Math.sqrt(2)+6 ,-0.5*rr*Math.sqrt(2)+rr-3),
@@ -815,8 +812,21 @@ fatline1=new THREE.Object3D();
         new THREE.Vector3(-r+r*0.5*Math.sqrt(2),6+1 ,-0.5*r*Math.sqrt(2)),
         new THREE.Vector3( 0,6+2,0),
         new THREE.Vector3( r-r*0.5*Math.sqrt(2),6+1,0.5*r*Math.sqrt(2)),
-        new THREE.Vector3( r,6,r)
-  ] ,false);
+        new THREE.Vector3( r,6,r),
+        new THREE.Vector3( r,6,0),
+        new THREE.Vector3(r, 6 ,-r),
+        new THREE.Vector3(r-r*0.5*Math.sqrt(2),6-3 ,-0.5*r*Math.sqrt(2)),
+        new THREE.Vector3( 0,6-4,0),
+        new THREE.Vector3( -r+r*0.5*Math.sqrt(2),6-3,0.5*r*Math.sqrt(2)),
+        new THREE.Vector3( -r,6,r),
+        new THREE.Vector3( -r,6,0),
+
+
+
+
+
+
+  ] ,true);
 
 
   var points4 = curve4.getPoints( 50 );
@@ -824,7 +834,7 @@ fatline1=new THREE.Object3D();
   var material4 = new THREE.LineBasicMaterial( { color : 0xffff00 } );
   curveObject4 = new THREE.Line( geometry4, material4 );
 ////////////////////////////
-
+//scene.add(curveObject4)
 /////////////////////////////
     curve5 = new THREE.CatmullRomCurve3( [
         new THREE.Vector3(r, 6 ,-r),
@@ -1070,6 +1080,7 @@ if(autocontroller2){
 }*/
 ////////////圆平面的变化
 if(droneshow1){
+    gyro.remove(camera);
   if(!firstline1){
       body.position.set(3.5-Raidus,5,0);
     //  if(droneadd)drones[0].cannon.position.set(curveCw.getPointAt(Time1 % 1))
@@ -1201,28 +1212,26 @@ if(!showline1)
 }
 
 if(droneshow2){
-  if(showline2){
-  scene.add(curveObject3,curveObject4,curveObject5);
+      gyro.add(camera);
+  if(showline1){
+  scene.add(curveObject4);
   box.visible=true;
   box2.visible=true;
-  box3.visible=true;
 }
-if(!showline2){
-   scene.remove(curveObject3,curveObject4,curveObject5);
+if(!showline1){
+   scene.remove(curveObject4);
    box.visible=false;
   box2.visible=false;
-  box3.visible=false;
 }
   if(!firstline2){
     firstline2=true;
-    body.position.copy(curve3.getPointAt(0));
-    drones[0].cannon.position.copy(curve4.getPointAt(0));
-   drone3s.drone3cannon.position.copy(curve5.getPointAt(0));
+    body.position.copy(curve4.getPointAt(0));
+    
   }
-  box.position.copy(curve3.getPointAt(Time1 % 1));
+  box.position.copy(curve4.getPointAt(Time1 % 1));
   box.position.y+=0.05
     //console.log(Time1);
-  targetPos=curve3.getPointAt(Time1 % 1);
+  targetPos=curve4.getPointAt(Time1 % 1);
   orientationcurve=targetPos.clone().sub(body.position).normalize();
   //orientationcurve=curve3.getTangent(Time1 % 1);
   yref=targetPos.y;
@@ -1270,54 +1279,7 @@ if(!showline2){
     }
  }
 /////////
-  box2.position.copy(curve4.getPointAt(Time2 % 1));
-  box2.position.y+=0.05
-  targetPos2=curve4.getPointAt(Time2 % 1);
-  orientationcurve2=targetPos2.clone().sub(drones[0].cannon.position).normalize();
-  //orientationcurve=curve3.getTangent(Time1 % 1);
-  drones[0].yrefs=targetPos2.y;
-  drones[0].rYaws = 0;
-  drones[0].turnings = false;  
-  var localY2 = drones[0].cannon.vectorToWorldFrame (new CANNON.Vec3(0,1,0) );
-  var localZ2 = drones[0].cannon.vectorToWorldFrame (new CANNON.Vec3(0,0,1) );
-  var yL2 = new THREE.Vector3 (localY2.x, localY2.y, localY2.z);
-  var x2 =new THREE.Vector3(orientationcurve2.clone().normalize().x,orientationcurve2.clone().normalize().y,orientationcurve2.clone().normalize().z);
-  var zL2 = new THREE.Vector3 (localZ2.x, localZ2.y, localZ2.z);
-  var zW2 = new THREE.Vector3 (0,0,1);
-  var yawAngle =  rotateAlongAxisTo (x2, yL2, zL2);
-  if(yawAngle-0.2>0) {
-  drones[0].rYaws = -drones[0].omegaHovers*0.1;
-  drones[0].turnings = true;
-  }
-  if(yawAngle+0.2<0){
-  drones[0].rYaws = drones[0].omegaHovers*0.1;
-  drones[0].turnings = true;
-  }
-  targetPosx=new THREE.Vector3(0,targetPos2.y,targetPos2.z);
-  orientationx=targetPosx.clone().sub(drones[0].cannon.position).normalize();
-  var z2=zW2.projectOnPlane(orientationx);
-  drones[0].pitchRefs =0;
- drones[0].pitchings=false;  
-  if(z2.z>0){
-  drones[0].pitchRefs = 0.04;
-  drones[0].pitchings=true;
-  }
-  if(z2.z<0){
-  drones[0].pitchRefs = -0.04;
-  drones[0].pitchings=true;
-  }
-  if(targetPos2.x-drones[0].cannon.position.x<=0.5&&targetPos2.x-drones[0].cannon.position.x>=-0.5&&Time2<=0.98805){ 
-      if(targetPos2.z-drones[0].cannon.position.z<=0.5&&targetPos2.z-drones[0].cannon.position.z>=-0.5){
-      Time2 += 0.00195;
 
-      drones[0].turnings=false;
-      drones[0].pitchRefs = 0;
-      drones[0].pitchings = false; 
-      drones[0].rollRefs = 0;
-      drones[0].rollings = false;
-     // ready=true;
-    }
- }
 //////////
   
 
