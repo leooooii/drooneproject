@@ -344,6 +344,8 @@ motors[3].rotation.y = Math.PI
   motors[i].add(SpeedCylinder[i]);
   SpeedCylinder[i].position+=2;
   }
+
+
 var bodybox=new THREE.Object3D();
 var head =  new THREE.Geometry();
   head.vertices.push(new THREE.Vector3(30, 0, 0));
