@@ -14,3 +14,5 @@
 四轴飞行器循线运动
 # O形路线
 ![img](https://imgur.com/TlL0j3e.gif)
+# S形路线
+![img](https://imgur.com/gSpEjLO.gif)
