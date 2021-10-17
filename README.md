@@ -4,6 +4,7 @@
 
 模拟出四轴飞行器的四种飞行情况
 # 垂直运动
+![img](https://imgur.com/PirOWhg.gif)
 # 俯仰运动
 # 偏航运动
 # 滚转运动
