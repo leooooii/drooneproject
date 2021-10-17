@@ -7,7 +7,3 @@
 ![img](https://imgur.com/PirOWhg.gif)
 # 俯仰运动
 ![img1](https://imgur.com/Zg4HOuF.gif)
-# 偏航运动
-![img1](https://imgur.com/sNA4s9V.gif)
-# 滚转运动
-![img](https://imgur.com/Wsw6zvL.gif)
