@@ -11,3 +11,6 @@
 ![img1](https://imgur.com/TuHUB2h.gif)
 # 滚转运动
 ![img](https://imgur.com/Wsw6zvL.gif)
+四轴飞行器循线运动
+# O形路线
+![img](https://imgur.com/TlL0j3e.gif)
