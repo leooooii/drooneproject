@@ -6,8 +6,8 @@
 # 垂直运动
 ![img](https://imgur.com/PirOWhg.gif)
 # 俯仰运动
-![img1](https://imgur.com/Zg4HOuF.gif)
+![img1](https://imgur.com/lm7OO7y.gif)
 # 偏航运动
-![img1](https://imgur.com/sNA4s9V.gif)
+![img1](https://imgur.com/TuHUB2h.gif)
 # 滚转运动
 ![img](https://imgur.com/Wsw6zvL.gif)
